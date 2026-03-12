@@ -1,0 +1,20 @@
+{
+  "name": "lead-finder-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "collect": "node pipeline/instagramCollector.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^7.2.0",
+    "axios": "^1.4.0",
+    "node-cron": "^3.0.2",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

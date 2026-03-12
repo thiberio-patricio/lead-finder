@@ -1,70 +1,30 @@
 import { useState, useEffect, useRef } from "react";
 
-const estadosCidades = {
-  "AC": { nome: "Acre", cidades: ["Rio Branco", "Cruzeiro do Sul", "Sena Madureira"] },
-  "AL": { nome: "Alagoas", cidades: ["Maceió", "Arapiraca", "Palmeira dos Índios"] },
-  "AM": { nome: "Amazonas", cidades: ["Manaus", "Parintins", "Itacoatiara"] },
-  "BA": { nome: "Bahia", cidades: ["Salvador", "Feira de Santana", "Vitória da Conquista", "Camaçari", "Itabuna"] },
-  "CE": { nome: "Ceará", cidades: ["Fortaleza", "Caucaia", "Juazeiro do Norte", "Maracanaú", "Sobral"] },
-  "DF": { nome: "Distrito Federal", cidades: ["Brasília", "Ceilândia", "Taguatinga", "Samambaia"] },
-  "ES": { nome: "Espírito Santo", cidades: ["Vitória", "Vila Velha", "Serra", "Cariacica", "Cachoeiro de Itapemirim"] },
-  "GO": { nome: "Goiás", cidades: ["Goiânia", "Aparecida de Goiânia", "Anápolis", "Rio Verde"] },
-  "MA": { nome: "Maranhão", cidades: ["São Luís", "Imperatriz", "Timon", "Caxias"] },
-  "MG": { nome: "Minas Gerais", cidades: ["Belo Horizonte", "Uberlândia", "Contagem", "Juiz de Fora", "Betim", "Montes Claros"] },
-  "MS": { nome: "Mato Grosso do Sul", cidades: ["Campo Grande", "Dourados", "Três Lagoas", "Corumbá"] },
-  "MT": { nome: "Mato Grosso", cidades: ["Cuiabá", "Várzea Grande", "Rondonópolis", "Sinop"] },
-  "PA": { nome: "Pará", cidades: ["Belém", "Ananindeua", "Santarém", "Marabá", "Castanhal"] },
-  "PB": { nome: "Paraíba", cidades: ["João Pessoa", "Campina Grande", "Santa Rita", "Patos"] },
-  "PE": { nome: "Pernambuco", cidades: ["Recife", "Caruaru", "Olinda", "Petrolina", "Paulista"] },
-  "PI": { nome: "Piauí", cidades: ["Teresina", "Parnaíba", "Picos", "Floriano"] },
-  "PR": { nome: "Paraná", cidades: ["Curitiba", "Londrina", "Maringá", "Ponta Grossa", "Cascavel", "Foz do Iguaçu"] },
-  "RJ": { nome: "Rio de Janeiro", cidades: ["Rio de Janeiro", "São Gonçalo", "Duque de Caxias", "Nova Iguaçu", "Niterói"] },
-  "RN": { nome: "Rio Grande do Norte", cidades: ["Natal", "Mossoró", "Parnamirim", "São Gonçalo do Amarante"] },
-  "RO": { nome: "Rondônia", cidades: ["Porto Velho", "Ji-Paraná", "Ariquemes", "Cacoal"] },
-  "RR": { nome: "Roraima", cidades: ["Boa Vista", "Rorainópolis", "Caracaraí"] },
-  "RS": { nome: "Rio Grande do Sul", cidades: ["Porto Alegre", "Caxias do Sul", "Canoas", "Pelotas", "Santa Maria"] },
-  "SC": { nome: "Santa Catarina", cidades: ["Florianópolis", "Joinville", "Blumenau", "São José", "Chapecó"] },
-  "SE": { nome: "Sergipe", cidades: ["Aracaju", "Nossa Senhora do Socorro", "Lagarto", "Itabaiana"] },
-  "SP": { nome: "São Paulo", cidades: ["São Paulo", "Guarulhos", "Campinas", "São Bernardo do Campo", "Santo André", "Ribeirão Preto", "Sorocaba", "Santos"] },
-  "TO": { nome: "Tocantins", cidades: ["Palmas", "Araguaína", "Gurupi", "Porto Nacional"] },
+// Metadata and lead arrays used to be hard‑coded above.  they are now fetched from
+// the backend so we can remove all static lead data and keep the UI in sync with a
+// real database.  the only remaining constant is a tiny helper used for mapping
+// state codes to full names on the fly (could also come from the server).
+
+const stateNames = {
+  AC: "Acre", AL: "Alagoas", AM: "Amazonas", BA: "Bahia", CE: "Ceará",
+  DF: "Distrito Federal", ES: "Espírito Santo", GO: "Goiás", MA: "Maranhão",
+  MG: "Minas Gerais", MS: "Mato Grosso do Sul", MT: "Mato Grosso", PA: "Pará",
+  PB: "Paraíba", PE: "Pernambuco", PI: "Piauí", PR: "Paraná", RJ: "Rio de Janeiro",
+  RN: "Rio Grande do Norte", RO: "Rondônia", RR: "Roraima", RS: "Rio Grande do Sul",
+  SC: "Santa Catarina", SE: "Sergipe", SP: "São Paulo", TO: "Tocantins",
 };
 
-const mockLeads = [
-  { id: 1, nome: "Restaurante Sabor da Terra", instagram: "@sabordaterra_bh", estado: "MG", cidade: "Belo Horizonte", bairro: "Savassi", categoria: "Restaurante", seguidores: 1240, engajamento: 0.6, posts: 87, ultimoPost: 45, leadScore: 91, status: "novo", telefone: "(31) 99234-5678", bio: "incompleta", cta: false, reels: false },
-  { id: 2, nome: "Ótica Visão Clara", instagram: "@visaoclara_oficial", estado: "SP", cidade: "São Paulo", bairro: "Vila Mariana", categoria: "Ótica", seguidores: 3420, engajamento: 0.9, posts: 54, ultimoPost: 12, leadScore: 87, status: "contatado", telefone: "(11) 98876-1234", bio: "completa", cta: false, reels: false },
-  { id: 3, nome: "Auto Peças Silva", instagram: "@autopecassilva", estado: "PR", cidade: "Curitiba", bairro: "Portão", categoria: "Autopeças", seguidores: 720, engajamento: 0.4, posts: 23, ultimoPost: 78, leadScore: 95, status: "novo", telefone: "(41) 97654-3210", bio: "incompleta", cta: false, reels: false },
-  { id: 4, nome: "Clínica Dra. Renata", instagram: "@drarenataodonto", estado: "RJ", cidade: "Rio de Janeiro", bairro: "Botafogo", categoria: "Saúde", seguidores: 5600, engajamento: 1.1, posts: 134, ultimoPost: 8, leadScore: 72, status: "negociação", telefone: "(21) 99123-4567", bio: "completa", cta: true, reels: false },
-  { id: 5, nome: "Loja Moda Feminina Chic", instagram: "@modafemininachic", estado: "CE", cidade: "Fortaleza", bairro: "Meireles", categoria: "Moda", seguidores: 2180, engajamento: 0.7, posts: 201, ultimoPost: 3, leadScore: 83, status: "novo", telefone: "(85) 98765-4321", bio: "incompleta", cta: false, reels: true },
-  { id: 6, nome: "Padaria Trigo Dourado", instagram: "@trigodourado_ce", estado: "CE", cidade: "Fortaleza", bairro: "Aldeota", categoria: "Alimentação", seguidores: 890, engajamento: 0.3, posts: 45, ultimoPost: 91, leadScore: 97, status: "novo", telefone: "(85) 96543-2109", bio: "incompleta", cta: false, reels: false },
-  { id: 7, nome: "Pet Shop Amigo Fiel", instagram: "@amigofiel_pets", estado: "PE", cidade: "Recife", bairro: "Boa Viagem", categoria: "Pet Shop", seguidores: 4320, engajamento: 2.1, posts: 312, ultimoPost: 2, leadScore: 58, status: "cliente", telefone: "(81) 99876-5432", bio: "completa", cta: true, reels: true },
-  { id: 8, nome: "Academia FitLife", instagram: "@fitlife_academia", estado: "MG", cidade: "Belo Horizonte", bairro: "Lourdes", categoria: "Academia", seguidores: 6700, engajamento: 0.8, posts: 178, ultimoPost: 5, leadScore: 79, status: "novo", telefone: "(31) 98765-1234", bio: "completa", cta: false, reels: false },
-  { id: 9, nome: "Salão Beleza Total", instagram: "@belezatotal_sp", estado: "SP", cidade: "São Paulo", bairro: "Pinheiros", categoria: "Beleza", seguidores: 1560, engajamento: 0.5, posts: 67, ultimoPost: 34, leadScore: 89, status: "descartado", telefone: "(11) 97890-4567", bio: "incompleta", cta: false, reels: false },
-  { id: 10, nome: "Escola de Inglês Prime", instagram: "@primeenglish_rj", estado: "RJ", cidade: "Rio de Janeiro", bairro: "Tijuca", categoria: "Educação", seguidores: 2890, engajamento: 1.4, posts: 89, ultimoPost: 15, leadScore: 68, status: "novo", telefone: "(21) 98234-6789", bio: "completa", cta: false, reels: false },
-  { id: 11, nome: "Mecânica Central Motors", instagram: "@centralmotors_cwb", estado: "PR", cidade: "Curitiba", bairro: "Água Verde", categoria: "Autopeças", seguidores: 540, engajamento: 0.2, posts: 12, ultimoPost: 120, leadScore: 98, status: "novo", telefone: "(41) 96789-1234", bio: "incompleta", cta: false, reels: false },
-  { id: 12, nome: "Confeitaria Doce Mel", instagram: "@docemel_confeitaria", estado: "MG", cidade: "Belo Horizonte", bairro: "Santa Efigênia", categoria: "Alimentação", seguidores: 3100, engajamento: 0.9, posts: 156, ultimoPost: 7, leadScore: 76, status: "contatado", telefone: "(31) 99012-3456", bio: "completa", cta: false, reels: true },
-  { id: 13, nome: "Farmácia São João", instagram: "@farmaciasaojoao_poa", estado: "RS", cidade: "Porto Alegre", bairro: "Moinhos de Vento", categoria: "Saúde", seguidores: 1870, engajamento: 0.5, posts: 43, ultimoPost: 22, leadScore: 86, status: "novo", telefone: "(51) 99345-6789", bio: "incompleta", cta: false, reels: false },
-  { id: 14, nome: "Imobiliária Vista Mar", instagram: "@vistamar_imoveis", estado: "SC", cidade: "Florianópolis", bairro: "Jurerê", categoria: "Imobiliária", seguidores: 4100, engajamento: 0.6, posts: 230, ultimoPost: 18, leadScore: 80, status: "novo", telefone: "(48) 98876-5432", bio: "completa", cta: false, reels: false },
-  { id: 15, nome: "Buffet Sabores da Bahia", instagram: "@saboresbahia_ssa", estado: "BA", cidade: "Salvador", bairro: "Barra", categoria: "Restaurante", seguidores: 2340, engajamento: 0.4, posts: 67, ultimoPost: 55, leadScore: 93, status: "novo", telefone: "(71) 97654-3210", bio: "incompleta", cta: false, reels: false },
-  { id: 16, nome: "Studio Dança Movimento", instagram: "@dancamovimento_bsb", estado: "DF", cidade: "Brasília", bairro: "Asa Sul", categoria: "Academia", seguidores: 980, engajamento: 0.7, posts: 89, ultimoPost: 41, leadScore: 88, status: "novo", telefone: "(61) 99123-4567", bio: "incompleta", cta: false, reels: true },
-];
+// state/city lookup, categories and other derived arrays are built from the lead
+// records returned by the API.  they are kept in component state so filters
+// update automatically when new data arrives.
 
-const nichos = [
-  { nome: "Restaurantes", leads: 142, cor: "#f97316", engMedio: 0.74 },
-  { nome: "Moda & Vestuário", leads: 98, cor: "#a855f7", engMedio: 0.82 },
-  { nome: "Autopeças", leads: 76, cor: "#3b82f6", engMedio: 0.41 },
-  { nome: "Beleza & Estética", leads: 65, cor: "#ec4899", engMedio: 0.61 },
-  { nome: "Alimentação", leads: 54, cor: "#22c55e", engMedio: 0.53 },
-  { nome: "Saúde & Clínicas", leads: 43, cor: "#06b6d4", engMedio: 1.12 },
-];
+// inside <App /> we'll introduce extra state variables (see later) that replace
+// the previous static constants:
+//   leads, estadosCidades, nichos, cidades, categoryOptions
 
-const cidades = [
-  { nome: "São Paulo", leads: 312, lat: -23.55, lng: -46.63 },
-  { nome: "Rio de Janeiro", leads: 198, lat: -22.90, lng: -43.17 },
-  { nome: "Belo Horizonte", leads: 154, lat: -19.92, lng: -43.94 },
-  { nome: "Curitiba", leads: 87, lat: -25.43, lng: -49.27 },
-  { nome: "Fortaleza", leads: 76, lat: -3.71, lng: -38.54 },
-  { nome: "Recife", leads: 62, lat: -8.05, lng: -34.88 },
-];
+// (the code below remains unchanged)
+
+
 
 const statusColors = {
   novo: { bg: "#1a3a2a", text: "#4ade80", border: "#166534" },
@@ -132,17 +92,20 @@ function AIInsightPanel({ lead }) {
   );
 }
 
-function MiniMap() {
-  const dots = [
-    { x: 42, y: 58, size: 18, city: "SP", leads: 312 },
-    { x: 55, y: 55, size: 14, city: "RJ", leads: 198 },
-    { x: 40, y: 52, size: 12, city: "BH", leads: 154 },
-    { x: 35, y: 70, size: 9, city: "CWB", leads: 87 },
-    { x: 55, y: 35, size: 8, city: "FOR", leads: 76 },
-    { x: 65, y: 45, size: 7, city: "REC", leads: 62 },
-    { x: 30, y: 60, size: 6, city: "POA", leads: 45 },
-    { x: 48, y: 40, size: 5, city: "SSA", leads: 38 },
-  ];
+function MiniMap({ cities }) {
+  // convert the list of cities (with leads + optional lat/lng) into a set of `dots`
+  // for the fake map; if no coords are provided we'll just scatter them.
+  const dots = (cities || []).map((c, i) => {
+    const baseX = ((i + 1) * 12) % 90;
+    const baseY = ((i + 2) * 9) % 80;
+    return {
+      x: c.lng ? 50 + (c.lng / 180) * 50 : baseX + Math.random() * 6,
+      y: c.lat ? 50 - (c.lat / 90) * 50 : baseY + Math.random() * 6,
+      size: 4 + Math.log(c.leads + 1) * 3,
+      city: c.nome,
+      leads: c.leads,
+    };
+  });
   const [hovered, setHovered] = useState(null);
 
   return (
@@ -199,13 +162,79 @@ export default function App() {
   const [sortBy, setSortBy] = useState("leadScore");
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
-  const [leads, setLeads] = useState(mockLeads);
+  const [leads, setLeads] = useState([]);                  // data comes from API
+  const [estadosCidades, setEstadosCidades] = useState({}); // derived from leads
+  const [nichos, setNichos] = useState([]);                // for charts
+  const [cidades, setCidades] = useState([]);              // for map preview
+  const [categoryOptions, setCategoryOptions] = useState([]); // unique categorias
   const [notification, setNotification] = useState(null);
   const [showScanModal, setShowScanModal] = useState(false);
   const [scanEstado, setScanEstado] = useState("");
   const [scanCidade, setScanCidade] = useState("");
   const [scanNicho, setScanNicho] = useState("");
   const [scanRaio, setScanRaio] = useState("10");
+
+  // when leads array changes we rebuild all of the derived lookup structures
+  useEffect(() => {
+    // load lead data from server
+    async function load() {
+      try {
+        const res = await fetch('/api/leads');
+        if (res.ok) {
+          const data = await res.json();
+          setLeads(data.map(l => ({ ...l, id: l._id || l.id }))); // add id for UI convenience
+        }
+      } catch (e) {
+        console.error('failed to fetch leads', e);
+      }
+    }
+    load();
+
+    // poll every 30 seconds so dashboard updates after a scan
+    const interval = setInterval(load, 30_000);
+    
+    const est = {};
+    // cleanup
+    return () => clearInterval(interval);
+    const nichMap = {};
+    const cidMap = {};
+    const cats = new Set();
+
+    leads.forEach(l => {
+      if (l.estado) {
+        if (!est[l.estado]) est[l.estado] = { nome: stateNames[l.estado] || l.estado, cidades: new Set() };
+        if (l.cidade) est[l.estado].cidades.add(l.cidade);
+      }
+      if (l.categoria) {
+        cats.add(l.categoria);
+        if (!nichMap[l.categoria]) nichMap[l.categoria] = { nome: l.categoria, leads: 0, cor: "#3b82f6", engTotal: 0 };
+        nichMap[l.categoria].leads += 1;
+        nichMap[l.categoria].engTotal += l.engajamento || 0;
+      }
+      if (l.cidade) {
+        if (!cidMap[l.cidade]) cidMap[l.cidade] = { nome: l.cidade, leads: 0, lat: 0, lng: 0 };
+        cidMap[l.cidade].leads += 1;
+      }
+    });
+
+    setEstadosCidades(
+      Object.fromEntries(
+        Object.entries(est).map(([uf, { nome, cidades }]) => [uf, { nome, cidades: Array.from(cidades) }])
+      )
+    );
+
+    setNichos(
+      Object.values(nichMap).map(n => ({
+        nome: n.nome,
+        leads: n.leads,
+        cor: n.cor,
+        engMedio: n.leads ? n.engTotal / n.leads : 0
+      }))
+    );
+
+    setCidades(Object.values(cidMap));
+    setCategoryOptions(Array.from(cats));
+  }, [leads]);
 
   const cidadesDoEstadoFiltro = filterEstado !== "todos" ? estadosCidades[filterEstado]?.cidades || [] : [];
   const cidadesDoEstadoScan = scanEstado ? estadosCidades[scanEstado]?.cidades || [] : [];
@@ -222,22 +251,24 @@ export default function App() {
     .filter(l => l.nome.toLowerCase().includes(searchTerm.toLowerCase()) || l.instagram.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => sortBy === "leadScore" ? b.leadScore - a.leadScore : sortBy === "engajamento" ? a.engajamento - b.engajamento : b.seguidores - a.seguidores);
 
-  const startScan = () => {
+  const startScan = async () => {
     if (!scanEstado || !scanCidade) { showNotif("⚠ Selecione estado e cidade para varrer."); return; }
     setShowScanModal(false);
     setScanning(true);
-    setScanProgress(0);
-    const interval = setInterval(() => {
-      setScanProgress(p => {
-        if (p >= 100) {
-          clearInterval(interval);
-          setScanning(false);
-          showNotif(`✅ Varredura em ${scanCidade}/${scanEstado} concluída! 3 novos leads encontrados.`);
-          return 100;
-        }
-        return p + 2;
+    try {
+      await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: scanEstado, cidade: scanCidade, nicho: scanNicho, raio: scanRaio })
       });
-    }, 60);
+      showNotif(`✅ Varredura solicitada para ${scanCidade}/${scanEstado}. Aguarde atualização automática.`);
+    } catch (err) {
+      console.error(err);
+      showNotif('❌ Falha ao iniciar varredura.');
+    } finally {
+      setScanning(false);
+      setScanProgress(100);
+    }
   };
 
   const showNotif = (msg) => {
@@ -245,9 +276,18 @@ export default function App() {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const updateStatus = (id, status) => {
+  const updateStatus = async (id, status) => {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l));
     showNotif(`Status atualizado para "${status}"`);
+    try {
+      await fetch(`/api/leads/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+    } catch (e) {
+      console.error('failed to save status', e);
+    }
   };
 
   const tabs = [
@@ -375,7 +415,7 @@ export default function App() {
                   <select value={scanNicho} onChange={e => setScanNicho(e.target.value)}
                     style={{ width: "100%", background: "#060d1a", border: "1px solid #1e3a5f", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#94a3b8", outline: "none" }}>
                     <option value="">Todos os nichos</option>
-                    {["Restaurante","Moda","Autopeças","Beleza","Alimentação","Saúde","Academia","Pet Shop","Educação","Imobiliária"].map(n => <option key={n} value={n}>{n}</option>)}
+                    {categoryOptions.sort().map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </div>
                 {/* Raio */}
@@ -597,7 +637,7 @@ export default function App() {
                   <span style={{ fontSize: 13, fontWeight: 700, color: "#94a3b8" }}>◉ MAPA DE OPORTUNIDADES — BRASIL</span>
                   <span style={{ fontSize: 11, color: "#475569" }}>Hover para detalhes</span>
                 </div>
-                <MiniMap />
+                <MiniMap cities={cidades} />
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", letterSpacing: 1, marginBottom: 4 }}>RANKING POR CIDADE</div>
