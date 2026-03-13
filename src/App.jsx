@@ -173,6 +173,30 @@ export default function App() {
   const [scanCidade, setScanCidade] = useState("");
   const [scanNicho, setScanNicho] = useState("");
   const [scanRaio, setScanRaio] = useState("10");
+  const [scanResults, setScanResults] = useState(null);
+  
+  // Lista de nichos para Google Places
+  const nichosGoogle = [
+    "Restaurante", "Cafeteria", "Bar", "Padaria", "Pizzaria",
+    "Salão de Beleza", "Barbearia", "Spa", "Academia", "Estúdio de Pilates",
+    "Loja de Roupas", "Boutique", "Loja de Calçados", "Joalheria",
+    "Pet Shop", "Veterinário", "Clínica de Estética", "Dentista", "Médico",
+    "Farmácia", "Ótica", "Imobiliária", "Advocacia", "Contabilidade",
+    "Mecânica", "Lava-Rápido", "Floricultura", "Supermercado",
+    "Escola", "Curso de Idiomas", "Auto Escola", "Hospedagem", "Hotel",
+    "Fotógrafo", "Estúdio de Tatuagem", "Loja de Eletrônicos", "Papelaria",
+  ];
+  
+  // Lista de estados brasileiros
+  const estadosBrasil = {
+    AC: "Acre", AL: "Alagoas", AM: "Amazonas", AP: "Amapá", BA: "Bahia",
+    CE: "Ceará", DF: "Distrito Federal", ES: "Espírito Santo", GO: "Goiás",
+    MA: "Maranhão", MG: "Minas Gerais", MS: "Mato Grosso do Sul",
+    MT: "Mato Grosso", PA: "Pará", PB: "Paraíba", PE: "Pernambuco",
+    PI: "Piauí", PR: "Paraná", RJ: "Rio de Janeiro", RN: "Rio Grande do Norte",
+    RO: "Rondônia", RR: "Roraima", RS: "Rio Grande do Sul", SC: "Santa Catarina",
+    SE: "Sergipe", SP: "São Paulo", TO: "Tocantins",
+  };
 
   // when leads array changes we rebuild all of the derived lookup structures
   useEffect(() => {
@@ -252,22 +276,54 @@ export default function App() {
     .sort((a, b) => sortBy === "leadScore" ? b.leadScore - a.leadScore : sortBy === "engajamento" ? a.engajamento - b.engajamento : b.seguidores - a.seguidores);
 
   const startScan = async () => {
-    if (!scanEstado || !scanCidade) { showNotif("⚠ Selecione estado e cidade para varrer."); return; }
+    if (!scanEstado || !scanCidade) { showNotif("Selecione estado e cidade para varrer."); return; }
     setShowScanModal(false);
     setScanning(true);
+    setScanProgress(10);
+    setScanResults(null);
+    
     try {
-      await fetch('/api/scan', {
+      const raioMetros = parseInt(scanRaio) * 1000; // Converter km para metros
+      const response = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estado: scanEstado, cidade: scanCidade, nicho: scanNicho, raio: scanRaio })
+        body: JSON.stringify({ 
+          estado: scanEstado, 
+          cidade: scanCidade, 
+          nicho: scanNicho, 
+          raio: raioMetros 
+        })
       });
-      showNotif(`✅ Varredura solicitada para ${scanCidade}/${scanEstado}. Aguarde atualização automática.`);
+      
+      setScanProgress(50);
+      const data = await response.json();
+      setScanProgress(100);
+      
+      if (data.businessesFound !== undefined) {
+        setScanResults({
+          found: data.businessesFound,
+          created: data.leadsCreated
+        });
+        showNotif(`Varredura concluída: ${data.businessesFound} empresas encontradas, ${data.leadsCreated} novos leads criados.`);
+      } else {
+        showNotif(`Varredura iniciada para ${scanCidade}/${scanEstado}. Aguarde atualização.`);
+      }
+      
+      // Recarregar leads
+      setTimeout(async () => {
+        const res = await fetch('/api/leads');
+        if (res.ok) {
+          const leadsData = await res.json();
+          setLeads(leadsData.map(l => ({ ...l, id: l._id || l.id })));
+        }
+      }, 2000);
+      
     } catch (err) {
       console.error(err);
-      showNotif('❌ Falha ao iniciar varredura.');
+      showNotif('Falha ao iniciar varredura. Verifique a chave da API.');
     } finally {
       setScanning(false);
-      setScanProgress(100);
+      setTimeout(() => setScanProgress(0), 1000);
     }
   };
 
@@ -325,7 +381,7 @@ export default function App() {
           <div style={{ width: 32, height: 32, background: "linear-gradient(135deg, #0891b2, #7c3aed)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>◎</div>
           <div>
             <div style={{ fontSize: 15, fontWeight: 800, color: "#f1f5f9", letterSpacing: -0.5, fontFamily: "'Space Grotesk', sans-serif" }}>Local Social Lead Finder</div>
-            <div style={{ fontSize: 10, color: "#475569", letterSpacing: 1, fontWeight: 500 }}>INTELLIGENCE PLATFORM</div>
+            <div style={{ fontSize: 10, color: "#475569", letterSpacing: 1, fontWeight: 500 }}>GOOGLE PLACES + INSTAGRAM FINDER</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -392,30 +448,34 @@ export default function App() {
                 <select value={scanEstado} onChange={e => { setScanEstado(e.target.value); setScanCidade(""); }}
                   style={{ width: "100%", background: "#060d1a", border: `1px solid ${scanEstado ? "#0891b2" : "#1e3a5f"}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: scanEstado ? "#e2e8f0" : "#475569", outline: "none" }}>
                   <option value="">Selecione o estado...</option>
-                  {Object.entries(estadosCidades).sort((a, b) => a[1].nome.localeCompare(b[1].nome)).map(([uf, { nome }]) => (
+                  {Object.entries(estadosBrasil).sort((a, b) => a[1].localeCompare(b[1])).map(([uf, nome]) => (
                     <option key={uf} value={uf}>{nome} ({uf})</option>
                   ))}
                 </select>
               </div>
 
-              {/* Cidade */}
+              {/* Cidade - Agora é um campo de texto para permitir qualquer cidade */}
               <div>
                 <label style={{ fontSize: 11, color: "#64748b", fontWeight: 700, letterSpacing: 1, display: "block", marginBottom: 6 }}>CIDADE *</label>
-                <select value={scanCidade} onChange={e => setScanCidade(e.target.value)} disabled={!scanEstado}
-                  style={{ width: "100%", background: "#060d1a", border: `1px solid ${scanCidade ? "#0891b2" : "#1e3a5f"}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: scanCidade ? "#e2e8f0" : "#475569", outline: "none", opacity: scanEstado ? 1 : 0.5 }}>
-                  <option value="">{scanEstado ? "Selecione a cidade..." : "Primeiro selecione o estado"}</option>
-                  {cidadesDoEstadoScan.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <input 
+                  type="text"
+                  value={scanCidade} 
+                  onChange={e => setScanCidade(e.target.value)} 
+                  placeholder={scanEstado ? "Digite o nome da cidade..." : "Primeiro selecione o estado"}
+                  disabled={!scanEstado}
+                  style={{ width: "100%", background: "#060d1a", border: `1px solid ${scanCidade ? "#0891b2" : "#1e3a5f"}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: scanCidade ? "#e2e8f0" : "#475569", outline: "none", opacity: scanEstado ? 1 : 0.5 }}
+                />
+                <div style={{ fontSize: 10, color: "#475569", marginTop: 4 }}>O Google Maps localizará automaticamente a cidade</div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 {/* Nicho */}
                 <div>
-                  <label style={{ fontSize: 11, color: "#64748b", fontWeight: 700, letterSpacing: 1, display: "block", marginBottom: 6 }}>NICHO (opcional)</label>
+                  <label style={{ fontSize: 11, color: "#64748b", fontWeight: 700, letterSpacing: 1, display: "block", marginBottom: 6 }}>TIPO DE NEGOCIO</label>
                   <select value={scanNicho} onChange={e => setScanNicho(e.target.value)}
                     style={{ width: "100%", background: "#060d1a", border: "1px solid #1e3a5f", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#94a3b8", outline: "none" }}>
-                    <option value="">Todos os nichos</option>
-                    {categoryOptions.sort().map(n => <option key={n} value={n}>{n}</option>)}
+                    <option value="">Todos os tipos</option>
+                    {nichosGoogle.map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </div>
                 {/* Raio */}
@@ -423,7 +483,7 @@ export default function App() {
                   <label style={{ fontSize: 11, color: "#64748b", fontWeight: 700, letterSpacing: 1, display: "block", marginBottom: 6 }}>RAIO DE BUSCA</label>
                   <select value={scanRaio} onChange={e => setScanRaio(e.target.value)}
                     style={{ width: "100%", background: "#060d1a", border: "1px solid #1e3a5f", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#94a3b8", outline: "none" }}>
-                    {["5","10","20","30","50"].map(r => <option key={r} value={r}>{r} km</option>)}
+                    {["1","2","5","10","20","30","50"].map(r => <option key={r} value={r}>{r} km</option>)}
                   </select>
                 </div>
               </div>
@@ -431,13 +491,26 @@ export default function App() {
               {/* Preview */}
               {scanEstado && scanCidade && (
                 <div style={{ background: "#060d1a", borderRadius: 8, border: "1px solid #0891b233", padding: "12px 14px", animation: "fadeIn 0.2s ease" }}>
-                  <div style={{ fontSize: 11, color: "#475569", marginBottom: 6 }}>PRÉVIA DA VARREDURA</div>
+                  <div style={{ fontSize: 11, color: "#475569", marginBottom: 6 }}>PREVIEW DA VARREDURA (Google Places API)</div>
                   <div style={{ fontSize: 13, color: "#e2e8f0" }}>
-                    📍 <strong style={{ color: "#06b6d4" }}>{scanCidade}</strong>, {estadosCidades[scanEstado]?.nome}
-                    {scanNicho && <> · Nicho: <strong style={{ color: "#a78bfa" }}>{scanNicho}</strong></>}
-                    {" "}· Raio: <strong style={{ color: "#94a3b8" }}>{scanRaio}km</strong>
+                    <span style={{ marginRight: 4 }}>Buscar em</span>
+                    <strong style={{ color: "#06b6d4" }}>{scanCidade}</strong>, {estadosBrasil[scanEstado]}
+                    {scanNicho && <> | Tipo: <strong style={{ color: "#a78bfa" }}>{scanNicho}</strong></>}
+                    {" "}| Raio: <strong style={{ color: "#94a3b8" }}>{scanRaio}km</strong>
                   </div>
-                  <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>~estimativa: 15–40 perfis a analisar</div>
+                  <div style={{ fontSize: 11, color: "#475569", marginTop: 6, lineHeight: 1.5 }}>
+                    O sistema vai buscar empresas no Google Maps e tentar encontrar seus perfis do Instagram automaticamente.
+                  </div>
+                </div>
+              )}
+              
+              {/* Resultados anteriores */}
+              {scanResults && (
+                <div style={{ background: "#0d2818", borderRadius: 8, border: "1px solid #16a34a33", padding: "12px 14px", animation: "fadeIn 0.2s ease" }}>
+                  <div style={{ fontSize: 11, color: "#4ade80", fontWeight: 700, marginBottom: 4 }}>ULTIMA VARREDURA</div>
+                  <div style={{ fontSize: 13, color: "#e2e8f0" }}>
+                    {scanResults.found} empresas encontradas | {scanResults.created} novos leads criados
+                  </div>
                 </div>
               )}
             </div>
@@ -753,11 +826,55 @@ export default function App() {
                   </div>
                   {/* Flags */}
                   <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                    {!selectedLead.cta && <span style={{ fontSize: 10, color: "#ef4444", background: "#ef444422", border: "1px solid #ef444444", borderRadius: 4, padding: "3px 8px", fontWeight: 600 }}>⚠ SEM CTA</span>}
-                    {selectedLead.bio === "incompleta" && <span style={{ fontSize: 10, color: "#f97316", background: "#f9731622", border: "1px solid #f9731644", borderRadius: 4, padding: "3px 8px", fontWeight: 600 }}>⚠ BIO INCOMPLETA</span>}
-                    {!selectedLead.reels && <span style={{ fontSize: 10, color: "#eab308", background: "#eab30822", border: "1px solid #eab30844", borderRadius: 4, padding: "3px 8px", fontWeight: 600 }}>⚠ SEM REELS</span>}
-                    {selectedLead.ultimoPost > 30 && <span style={{ fontSize: 10, color: "#ef4444", background: "#ef444422", border: "1px solid #ef444444", borderRadius: 4, padding: "3px 8px", fontWeight: 600 }}>⚠ PERFIL INATIVO</span>}
+                    {!selectedLead.cta && <span style={{ fontSize: 10, color: "#ef4444", background: "#ef444422", border: "1px solid #ef444444", borderRadius: 4, padding: "3px 8px", fontWeight: 600 }}>SEM CTA</span>}
+                    {selectedLead.bio === "incompleta" && <span style={{ fontSize: 10, color: "#f97316", background: "#f9731622", border: "1px solid #f9731644", borderRadius: 4, padding: "3px 8px", fontWeight: 600 }}>BIO INCOMPLETA</span>}
+                    {!selectedLead.reels && <span style={{ fontSize: 10, color: "#eab308", background: "#eab30822", border: "1px solid #eab30844", borderRadius: 4, padding: "3px 8px", fontWeight: 600 }}>SEM REELS</span>}
+                    {selectedLead.ultimoPost > 30 && <span style={{ fontSize: 10, color: "#ef4444", background: "#ef444422", border: "1px solid #ef444444", borderRadius: 4, padding: "3px 8px", fontWeight: 600 }}>PERFIL INATIVO</span>}
                   </div>
+                  
+                  {/* Google Places Info */}
+                  {(selectedLead.googlePlaceId || selectedLead.rating || selectedLead.website) && (
+                    <div style={{ marginTop: 16, padding: "12px 14px", background: "#060d1a", borderRadius: 8, border: "1px solid #1e3a5f" }}>
+                      <div style={{ fontSize: 11, color: "#475569", fontWeight: 700, marginBottom: 8, letterSpacing: 0.5 }}>DADOS DO GOOGLE</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                        {selectedLead.rating > 0 && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            <span style={{ color: "#fbbf24" }}>{'*'.repeat(Math.round(selectedLead.rating))}</span>
+                            <span style={{ fontSize: 12, color: "#e2e8f0", fontWeight: 600 }}>{selectedLead.rating.toFixed(1)}</span>
+                            {selectedLead.userRatingsTotal > 0 && (
+                              <span style={{ fontSize: 10, color: "#64748b" }}>({selectedLead.userRatingsTotal} avaliacoes)</span>
+                            )}
+                          </div>
+                        )}
+                        {selectedLead.telefone && (
+                          <span style={{ fontSize: 11, color: "#94a3b8" }}>Tel: {selectedLead.telefone}</span>
+                        )}
+                      </div>
+                      {selectedLead.endereco && (
+                        <div style={{ fontSize: 11, color: "#64748b", marginTop: 6 }}>{selectedLead.endereco}</div>
+                      )}
+                      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                        {selectedLead.website && (
+                          <a href={selectedLead.website} target="_blank" rel="noopener noreferrer" 
+                            style={{ fontSize: 10, color: "#06b6d4", background: "#06b6d422", border: "1px solid #06b6d444", borderRadius: 4, padding: "4px 8px", textDecoration: "none", fontWeight: 600 }}>
+                            SITE
+                          </a>
+                        )}
+                        {selectedLead.googleMapsUrl && (
+                          <a href={selectedLead.googleMapsUrl} target="_blank" rel="noopener noreferrer"
+                            style={{ fontSize: 10, color: "#4ade80", background: "#4ade8022", border: "1px solid #4ade8044", borderRadius: 4, padding: "4px 8px", textDecoration: "none", fontWeight: 600 }}>
+                            GOOGLE MAPS
+                          </a>
+                        )}
+                        {selectedLead.instagram && selectedLead.instagram.startsWith('@') && (
+                          <a href={`https://instagram.com/${selectedLead.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer"
+                            style={{ fontSize: 10, color: "#e879f9", background: "#e879f922", border: "1px solid #e879f944", borderRadius: 4, padding: "4px 8px", textDecoration: "none", fontWeight: 600 }}>
+                            INSTAGRAM
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* AI Insights */}

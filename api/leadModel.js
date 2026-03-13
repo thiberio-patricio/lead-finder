@@ -17,6 +17,15 @@ const leadSchema = new mongoose.Schema({
   bio: String,
   cta: Boolean,
   reels: Boolean,
+  // Google Places fields
+  website: String,
+  googlePlaceId: String,
+  googleMapsUrl: String,
+  rating: Number,
+  userRatingsTotal: Number,
+  endereco: String,
+  latitude: Number,
+  longitude: Number,
 }, { timestamps: true });
 
 export default mongoose.models.Lead || mongoose.model('Lead', leadSchema);
